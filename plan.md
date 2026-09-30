@@ -582,11 +582,11 @@ this plan by another session and was left exactly as written.
   `scip-dotnet`, a Roslyn-built C# indexer. Further, SCIP's own design doc *rejects* the
   nodes-and-edges representation §10/§11 propose, and a 100-concept ontology is lossier
   than Roslyn's semantic model. (evidence: `12-findings.md` §1–§3)
-- Changed to: §12 status set to HALTED; §12.3a records the outcome; §12.8 presents four
+- Changed to: §12 status set to HALTED; §12.3 records the outcome; §12.5 presents four
   directions for the owner to choose between. **No code was written against §12.** D2 is
   not deleted — it remains a correct design for testing *any* proposed representation
   against an AST baseline, and applies unchanged to a re-scoped direction.
 - Owner notified: yes — reported in this session with the evidence, and the direction
   choice was put to the owner.
-- Affects: §12.3 (risk resolved against us), §12.3a (new), §12.8 (new), D2's status, and
+- Affects: §12.3 (risk resolved against us), §12.5 (new), D2's status, and
   the owner's structure-only decision, which direction B would reverse.
