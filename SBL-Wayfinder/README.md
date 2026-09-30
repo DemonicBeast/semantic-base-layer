@@ -22,6 +22,18 @@ versions are history, not stale copies — never clean them up.
 | --- | --- | --- | --- |
 | `v01/` | 2025-10-01 | open | Map charted; 9 tickets created (01–05 frontier, 06–09 blocked) |
 
+## GitHub mirror
+
+The map is also published at <https://github.com/DemonicBeast/semantic-base-layer>,
+where each ticket is a GitHub issue carrying the same `SBL | <area> | <title>` name
+and a domain label (`sbl:research`, `sbl:engineering`, `sbl:decision`, plus
+`sbl:frontier` / `sbl:blocked` / `claimed`).
+
+The **markdown in this folder is canonical**. The issues exist so the board is
+readable and labelable at a glance — when a ticket resolves, the issue is updated
+to match, never the other way round. The local↔issue number mapping is recorded in
+`vNN/github-issues.tsv`.
+
 ## Layout of a version
 
 ```

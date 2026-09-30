@@ -1,0 +1,10 @@
+ticket	issue	area	title	url
+01	1	research	SBL | Research | Is the core hypothesis already falsified?	https://github.com/DemonicBeast/semantic-base-layer/issues/1
+02	2	research	SBL | Research | Does this already exist, and where is it used?	https://github.com/DemonicBeast/semantic-base-layer/issues/2
+03	3	engineering	SBL | Engineering | Can the first milestone be built with tools that exist?	https://github.com/DemonicBeast/semantic-base-layer/issues/3
+04	4	engineering	SBL | Engineering | What does it take to reach the final state?	https://github.com/DemonicBeast/semantic-base-layer/issues/4
+05	5	research	SBL | Research | Would anyone adopt a shared semantic ID space?	https://github.com/DemonicBeast/semantic-base-layer/issues/5
+06	6	engineering	SBL | Engineering | What must be assembled for the first experiment?	https://github.com/DemonicBeast/semantic-base-layer/issues/6
+07	7	decision	SBL | Decision | Mint a new ID space, or align to an existing one?	https://github.com/DemonicBeast/semantic-base-layer/issues/7
+08	8	decision	SBL | Decision | How deep should the ontology be, and what is context?	https://github.com/DemonicBeast/semantic-base-layer/issues/8
+09	9	decision	SBL | Decision | Which experiment runs first, and what counts as success?	https://github.com/DemonicBeast/semantic-base-layer/issues/9
