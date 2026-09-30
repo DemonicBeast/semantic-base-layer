@@ -45,8 +45,9 @@ RE_FENCE = re.compile(r"^\s*(```|~~~)")
 RE_HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
 RE_MD_LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 RE_URL_LIKE = re.compile(
-    r"^(?:[a-z][a-z0-9+.\-]*:)?//|^[a-z0-9][a-z0-9.\-]*\.(?:org|com|net|io|ai|edu|gov|dev)(?:[/?#]|$)",
+    r"^(?:[a-z][a-z0-9+.\-]*:)?//|^[a-z0-9][a-z0-9.\-]*\.(?:org|com|net|io|ai|edu|gov|dev|org)(?:[/?#]|$)",
     re.I)
+RE_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:")
 RE_TICKET_REF = re.compile(r"\b(\d{2})-findings\.md\b")
 RE_ISSUES_LINK = re.compile(r"(?:^|/)issues/(\d{2})-[a-z0-9-]+\.md")
 RE_FIELD = re.compile(r"^(Type|Status|Blocked by|Resolved|Artifact|Label):\s*(.*?)\s*$")
@@ -105,19 +106,54 @@ def make_id(kind, key):
 # --------------------------------------------------------------------------- scan
 
 def scan_files():
+    """Graph what git considers part of the repository: tracked files plus
+    untracked-but-not-ignored files. Gitignored bulk (research/ corpora, scratch
+    downloads) is deliberately excluded - it is not project structure, and
+    indexing it inflated the first build to 559 files and 1.7 MB."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-co", "--exclude-standard", "-z"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        )
+        if out.returncode == 0:
+            names = [n for n in out.stdout.decode("utf-8", "replace").split("\0") if n]
+            found = []
+            for name in names:
+                full = os.path.join(ROOT, name)
+                if not os.path.isfile(full) or name.endswith(SKIP_SUFFIX):
+                    continue
+                if os.path.basename(name) == os.path.basename(DB_PATH):
+                    continue
+                found.append(name)
+            return sorted(found)
+    except OSError:
+        pass
+    # fallback when git is unavailable: walk the tree, skipping the same bulk
     found = []
     for dirpath, dirnames, filenames in os.walk(ROOT):
         dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
         for name in sorted(filenames):
-            if name.endswith(SKIP_SUFFIX):
+            if name.endswith(SKIP_SUFFIX) or name == os.path.basename(DB_PATH):
                 continue
             path = os.path.join(dirpath, name)
-            if name == os.path.basename(DB_PATH):
-                continue
             if os.path.islink(path) and not os.path.exists(path):
                 continue
             found.append(rel(path))
     return sorted(found)
+
+
+def ignored_counts():
+    """Report how much gitignored material the graph intentionally leaves out."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-o", "-i", "--exclude-standard", "-z"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        )
+        if out.returncode != 0:
+            return 0
+        return len([n for n in out.stdout.decode("utf-8", "replace").split("\0") if n])
+    except OSError:
+        return 0
 
 
 # --------------------------------------------------------------------------- build
@@ -130,6 +166,7 @@ class Graph(object):
         self.sec_index = {}      # (file, section_number) -> node id
         self.tickets = {}        # "01" -> dict
         self.dangling = []
+        self.urls = set()        # external URL targets, counted not graphed
 
     def add_node(self, kind, key, repo_path="", name="", line_start=None,
                  line_end=None, attrs=None):
@@ -148,15 +185,27 @@ class Graph(object):
             return
         self.edges.append((src, dst, relation, attrs or {}))
 
-    def link_file(self, target, src_id, relation, attrs=None):
-        """Add an edge to `target` (repo-relative path) if it exists on disk.
+    def link_file(self, target, src_id, relation, attrs=None, base_dir=""):
+        """Add an edge to `target` if it names a repository path.
 
-        If it does not exist, still add the edge - pointing at a `missing` marker
-        node - so `health` can report it instead of the reference vanishing."""
-        target = target.strip().lstrip("./")
-        if not target or target.startswith(("http://", "https://", "#", "mailto:")):
+        `target` is the raw reference as written (e.g. `issues/03-...md`,
+        `../../design.md`, `https://arxiv.org/abs/1`). It is classified first and
+        resolved second: a URL must never reach os.path.normpath, which collapses
+        `https://` into `https:/`.
+
+        If the path does not exist, the edge still gets added, pointing at a
+        `missing` marker node, so `health` can report it rather than the
+        reference silently vanishing."""
+        raw = target.strip()
+        if not raw or raw.startswith("#") or raw.startswith("mailto:"):
             return False
-        target = os.path.normpath(target).replace(os.sep, "/")
+        if RE_SCHEME.match(raw) or raw.startswith("//") or RE_URL_LIKE.match(raw):
+            self.urls.add(raw)
+            return False
+        target = os.path.normpath(os.path.join(base_dir, raw)) if base_dir else os.path.normpath(raw)
+        target = target.replace(os.sep, "/")
+        if target.startswith("..") or os.path.isabs(target):
+            return False
         nid = make_id("file", target)
         if nid not in self.nodes:
             self.dangling.append((src_id, relation, target))
@@ -305,9 +354,12 @@ def build():
         parse_markdown(g, path, text)
         fid = make_id("file", path)
         for target in set(RE_MD_LINK.findall(text)):
-            if target.endswith(".md") or "/" in target:
-                resolved = os.path.normpath(os.path.join(os.path.dirname(path), target))
-                g.link_file(resolved, fid, "links_to", {"raw": target})
+            # Classify BEFORE resolving. Joining a URL onto the file's directory
+            # and calling normpath() on it collapses "https://" to "https:/" and
+            # invents junk paths like "SBL-Wayfinder/v01/https:/arxiv.org/...".
+            # link_file() is the only place that should decide this.
+            g.link_file(target, fid, "links_to", {"raw": target},
+                        base_dir=os.path.dirname(path))
         m = RE_ISSUES_LINK.search(path)
         if m:
             g.add_edge(fid, make_id("map_version", os.path.basename(os.path.dirname(os.path.dirname(path)))),
@@ -371,12 +423,13 @@ def build():
     conn = sqlite3.connect(tmp)
     conn.executescript(SCHEMA_SQL)
     for uid, n in g.nodes.items():
+        body = n["attrs"].get("body", "")
         conn.execute(
-            "INSERT INTO nodes(uid,kind,repo_path,name,line_start,line_end,attrs_json,content_hash)"
-            " VALUES(?,?,?,?,?,?,?,?)",
-            (uid, n["kind"], n["repo_path"], n["name"], n["line_start"], n["line_end"],
+            "INSERT INTO nodes(uid,kind,repo_path,name,body,line_start,line_end,attrs_json,content_hash)"
+            " VALUES(?,?,?,?,?,?,?,?,?)",
+            (uid, n["kind"], n["repo_path"], n["name"], body, n["line_start"], n["line_end"],
              json.dumps(n["attrs"], ensure_ascii=False),
-             sha1(n["attrs"].get("body", n["name"]))),
+             sha1(body or n["name"])),
         )
     seen = set()
     for src, dst, relation, attrs in g.edges:
@@ -395,13 +448,10 @@ def build():
             (tid, t["title"], t["area"], t["type"], t["status"], t["blocked_by"],
              t["resolved"], t["artifact"], t["file_path"], 1),
         )
-    for tid, t in sorted(g.tickets.items()):
-        body = t.get("body", "")
-        if body:
-            row = conn.execute("SELECT rowid FROM nodes WHERE uid=?", (make_id("ticket", tid),)).fetchone()
-            if row:
-                conn.execute("INSERT INTO nodes_fts(rowid,name,body) VALUES(?,?,?)",
-                             (row[0], t["title"], body))
+    # Populate the full-text index from the content table. `nodes_fts` is an
+    # external-content FTS5 table over `nodes(name, body)`, so the supported way
+    # to fill it is the special 'rebuild' command, not a hand-written INSERT.
+    conn.execute("INSERT INTO nodes_fts(nodes_fts) VALUES('rebuild')")
     rev = git_rev()
     conn.execute(
         "INSERT INTO builds(started_at,finished_at,file_count,node_count,edge_count,"
@@ -414,12 +464,16 @@ def build():
 
     elapsed = time.time() - started
     size = os.path.getsize(DB_PATH)
+    skipped = ignored_counts()
     print("built %s" % rel(DB_PATH))
-    print("  files  %d" % len(files))
+    print("  files  %d   (git-visible: tracked + not-ignored)" % len(files))
     print("  nodes  %d" % len(g.nodes))
     print("  edges  %d" % len(seen))
     print("  rev    %s" % rev)
     print("  time   %.2fs   size %.0f KB" % (elapsed, size / 1024.0))
+    print("  excluded %d gitignored file(s) - research/ corpora, scratch" % skipped)
+    if g.urls:
+        print("  external URLs referenced (not graphed): %d" % len(g.urls))
     if g.dangling:
         print("  dangling refs: %d (see `health`)" % len(g.dangling))
     with open(LOG_PATH, "a", encoding="utf-8") as fh:
@@ -434,7 +488,7 @@ SCHEMA_SQL = """
 PRAGMA journal_mode=DELETE;
 CREATE TABLE nodes(
   rowid INTEGER PRIMARY KEY, uid TEXT NOT NULL UNIQUE, kind TEXT NOT NULL,
-  repo_path TEXT, name TEXT, line_start INTEGER, line_end INTEGER,
+  repo_path TEXT, name TEXT, body TEXT, line_start INTEGER, line_end INTEGER,
   attrs_json TEXT, content_hash TEXT);
 CREATE TABLE edges(
   id INTEGER PRIMARY KEY AUTOINCREMENT, src_id TEXT NOT NULL, dst_id TEXT NOT NULL,
@@ -508,43 +562,67 @@ def cmd_health(conn):
     problems = 0
     row = last_build(conn)
     newest_src = 0.0
-    for r in conn.execute("SELECT repo_path FROM nodes WHERE kind='file' AND repo_path <> ''"):
+    newest_path = ""
+    # Only source files count for staleness. The index and its build log are
+    # outputs of this tool; counting them would make every build look stale.
+    for r in conn.execute(
+            "SELECT repo_path FROM nodes WHERE kind='file' AND repo_path <> '' "
+            "AND repo_path NOT LIKE 'tools/%'"):
         p = os.path.join(ROOT, r["repo_path"])
         if os.path.exists(p):
-            newest_src = max(newest_src, os.path.getmtime(p))
+            m = os.path.getmtime(p)
+            if m > newest_src:
+                newest_src, newest_path = m, r["repo_path"]
     if row and newest_src > row["finished_at"]:
-        print("STALE      a source file changed after the build - rerun build")
+        print("STALE      %s changed after the build - rerun build" % newest_path)
         problems += 1
     rev = git_rev()
     if row and row["git_rev"] != rev and rev != "unknown":
         print("STALE      index built at rev %s, working tree at %s" % (row["git_rev"], rev))
         problems += 1
 
-    print("dangling references")
-    n = 0
-    for r in conn.execute(
-            "SELECT e.relation, e.src_id, e.attrs_json, n.name FROM edges e "
-            "JOIN nodes n ON n.uid = e.dst_id "
-            "WHERE e.relation IN ('missing_ref','missing_artifact') ORDER BY e.relation"):
-        label = "BROKEN LINK " if r["relation"] == "missing_ref" else "NO ARTIFACT "
-        print("  %s %s -> %s" % (label, r["src_id"], r["name"]))
-        n += 1
-    if not n:
+    print("dangling references (summary; every line shown below)")
+    rows = list(conn.execute(
+        "SELECT e.relation, e.src_id, n.name FROM edges e JOIN nodes n ON n.uid = e.dst_id "
+        "WHERE e.relation IN ('missing_ref','missing_artifact') ORDER BY e.src_id"))
+    broken = [r for r in rows if r["relation"] == "missing_ref"]
+    noart = [r for r in rows if r["relation"] == "missing_artifact"]
+    if not rows:
         print("  none")
-    problems += 1 if n else 0
+    else:
+        print("  %d broken link(s), %d claimed-but-unwritten artifact(s)" % (len(broken), len(noart)))
+        by_src = {}
+        for r in broken:
+            by_src.setdefault(r["src_id"], []).append(r["name"])
+        for src in sorted(by_src):
+            print("    %s" % src[:70])
+            for t in sorted(by_src[src]):
+                print("        broken -> %s" % t)
+        for r in noart:
+            print("    %s claims %s" % (r["src_id"][:70], r["name"]))
+    problems += 1 if rows else 0
 
     print("\ntickets not referenced from any map")
     n = 0
+    # A ticket is "on the map" if the map file, or any section inside it, links to
+    # that ticket's file. The map's own `contains` edges point at sections, so
+    # checking `contains` alone (as an earlier version did) reported every ticket
+    # as an orphan.
     for r in conn.execute(
+            "WITH mapnodes AS ("
+            "  SELECT uid FROM nodes WHERE kind='file' AND repo_path LIKE '%map.md' "
+            "  UNION SELECT n.uid FROM nodes n JOIN edges e ON e.src_id IN ("
+            "     SELECT uid FROM nodes WHERE kind='file' AND repo_path LIKE '%map.md') "
+            "  WHERE n.kind='section'), "
+            "linked AS (SELECT e.dst_id FROM edges e WHERE e.src_id IN "
+            "           (SELECT uid FROM mapnodes) AND e.relation IN ('links_to','cites_section')) "
             "SELECT t.ticket_id, t.status, t.file_path, t.title FROM tickets t "
-            "WHERE t.ticket_id NOT IN ("
-            "  SELECT substr(e.src_id, 8) FROM edges e WHERE e.relation='contains' "
-            "  AND e.dst_id IN (SELECT uid FROM nodes WHERE kind='file' AND repo_path LIKE '%/map.md'))"):
+            "WHERE ('file:' || t.file_path) NOT IN (SELECT dst_id FROM linked)"):
         print("  ORPHAN   ticket %s (%s) - %s" % (r["ticket_id"], r["status"], r["file_path"]))
         print("           %s" % r["title"])
         n += 1
     if not n:
-        print("  none")
+        print("  none - every ticket is referenced from the map")
     problems += 1 if n else 0
 
     print("\nticket state")
@@ -568,23 +646,27 @@ def cmd_query(conn, text, limit):
     if not words:
         print("empty query")
         return 1
-    expr = " OR ".join('"%s"' % w for w in words)
+    # AND the terms so a phrase does not degrade into every word separately.
+    expr = " ".join('"%s"' % w for w in words)
     sql = """
       SELECT n.uid, n.kind, n.repo_path, n.name, n.line_start, n.line_end,
-             snippet(nodes_fts, 1, '', '', ' ... ', 12) AS snip,
+             snippet(nodes_fts, 1, '', '', ' ... ', 14) AS snip,
              bm25(nodes_fts) AS score
       FROM nodes_fts JOIN nodes n ON n.rowid = nodes_fts.rowid
       WHERE nodes_fts MATCH ?
       ORDER BY score LIMIT ?"""
-    rows = conn.execute(sql, (expr, limit)).fetchall()
+    try:
+        rows = conn.execute(sql, (expr, limit)).fetchall()
+    except sqlite3.OperationalError:
+        rows = []
     if not rows:
-        print("no hits for %r" % text)
+        print("no indexed text matched %r" % text)
         return 0
     for r in rows:
         loc = "%s:%s-%s" % (r["repo_path"], r["line_start"], r["line_end"])
         print("%-9s %s  %s" % (r["kind"], loc, (r["name"] or "")[:70]))
         if r["snip"]:
-            print("          %s" % " ".join(r["snip"].split())[:180])
+            print("          %s" % " ".join(r["snip"].split())[:190])
     print("\n%d hit(s). Next: python3 tools/sblgraph.py raw <path> <start> <end>" % len(rows))
     return 0
 
