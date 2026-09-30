@@ -1,7 +1,7 @@
 # SBL | Research | Would anyone adopt a shared semantic ID space?
 
 Type: research
-Status: claimed
+Status: resolved
 Blocked by: —
 
 ## Question

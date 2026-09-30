@@ -1,7 +1,7 @@
 # SBL | Research | Is the core hypothesis already falsified?
 
 Type: research
-Status: claimed
+Status: resolved
 Blocked by: —
 
 ## Question

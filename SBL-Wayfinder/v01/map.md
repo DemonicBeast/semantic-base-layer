@@ -43,17 +43,25 @@ Dispatched in parallel. Each writes `NN-findings.md` beside its ticket.
 
 | Ticket | Question | Status |
 | --- | --- | --- |
-| [SBL \| Research \| Is the core hypothesis already falsified?](issues/01-is-the-core-hypothesis-already-falsified.md) | Compositional generalization, hierarchical prediction, interlingua ceiling, parser error compounding | in flight |
-| [SBL \| Research \| Does this already exist, and where is it used?](issues/02-does-this-already-exist.md) | Nearest neighbours incl. UMR/AMR; deployed usage; novelty test | in flight |
-| [SBL \| Engineering \| Can the first milestone be built with tools that exist?](issues/03-can-the-first-milestone-be-built-with-tools-that-exist.md) | Tamil tooling gap, UD→semantics path, parallel corpora, serialization | in flight |
-| [SBL \| Engineering \| What does it take to reach the final state?](issues/04-what-does-it-take-to-reach-the-final-state.md) | Per-phase software/hardware/data/people/cost inventory | in flight |
-| [SBL \| Research \| Would anyone adopt a shared semantic ID space?](issues/05-would-anyone-adopt-a-shared-semantic-id-space.md) | Adoption mechanisms; where the GPS analogy breaks | in flight |
+| [SBL \| Research \| Is the core hypothesis already falsified?](issues/01-is-the-core-hypothesis-already-falsified.md) | Compositional generalization, hierarchical prediction, interlingua ceiling, parser error compounding | **resolved** — [findings](issues/01-findings.md) |
+| [SBL \| Research \| Does this already exist, and where is it used?](issues/02-does-this-already-exist.md) | Nearest neighbours incl. UMR/AMR; deployed usage; novelty test | **resolved** — [findings](issues/02-findings.md) |
+| [SBL \| Engineering \| Can the first milestone be built with tools that exist?](issues/03-can-the-first-milestone-be-built-with-tools-that-exist.md) | Tamil tooling gap, UD→semantics path, parallel corpora, serialization | **resolved** — [findings](issues/03-findings.md), reconstructed from transcript |
+| [SBL \| Engineering \| What does it take to reach the final state?](issues/04-what-does-it-take-to-reach-the-final-state.md) | Per-phase software/hardware/data/people/cost inventory | **resolved** — [findings](issues/04-findings.md) |
+| [SBL \| Research \| Would anyone adopt a shared semantic ID space?](issues/05-would-anyone-adopt-a-shared-semantic-id-space.md) | Adoption mechanisms; where the GPS analogy breaks | **resolved** — [findings](issues/05-findings.md) |
+
+All five were stopped mid-flight at the user's request. A consolidated account of what
+was recovered, what it does to the map, and what was lost is in
+[the research recovery report](11-research-recovery-report.md).
 
 ## Decisions so far
 
 <!-- the index: one line per closed ticket, then zoom the link for the detail the ticket holds -->
 
-_None yet — v01 charted the map and opened the tickets._
+- [SBL \| Research \| Is the core hypothesis already falsified?](issues/01-is-the-core-hypothesis-already-falsified.md): **Partly yes.** COGS's failure result was walked back by ReCOGS (it measured LF formatting, not composition); compositional gains come from training-distribution design, not symbolic structure; §13's proposed test is a non-discriminating mix-and-match split; §6 has no inference-time support in the literature; Tamil LAS ~62 caps end-to-end fidelity. Detail: [findings](issues/01-findings.md).
+- [SBL \| Research \| Does this already exist, and where is it used?](issues/02-does-this-already-exist.md): **Yes — UMR occupies the niche**, actively NSF-funded, six languages, parser at SMATCH++ 91. UD proves the shared-inventory governance model works. The novelty claim as written does not survive; only model-interoperability (§7) and hierarchical prediction (§6) remain candidates. Detail: [findings](issues/02-findings.md).
+- [SBL \| Engineering \| Can the first milestone be built with tools that exist?](issues/03-can-the-first-milestone-be-built-with-tools-that-exist.md): **Phase 1 yes; Phase 2 blocked twice over.** Tamil LAS ~51–62 vs English ~88–90, spaCy has no Tamil, and the only Tamil treebank with training data is CC BY-NC-SA 3.0 (non-commercial) while the permissive one is test-only. Detail: [findings](issues/03-findings.md).
+- [SBL \| Engineering \| What does it take to reach the final state?](issues/04-what-does-it-take-to-reach-the-final-state.md): **Compute is cheap, annotation is not.** Phase 1 is a laptop; Phase 5 wants 24 GB VRAM (~$0.69/hr). The dominant cost is native Tamil semantic annotation — 1,000 pairs is a $2.5k–15k estimate at double annotation, and the roadmap runs to 100,000. Detail: [findings](issues/04-findings.md).
+- [SBL \| Research \| Would anyone adopt a shared semantic ID space?](issues/05-would-anyone-adopt-a-shared-semantic-id-space.md): **Unfalsifiable at §20's scale** — with 100 concepts the only emitter is SBL itself. Six minimum conditions stated. Every successful standard paid its adopter at the point of use; the W3C Semantic Web is the closest negative precedent; ONNX won by being narrow. Detail: [findings](issues/05-findings.md).
 
 ## Not yet specified
 

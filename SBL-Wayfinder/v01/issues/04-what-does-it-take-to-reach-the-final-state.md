@@ -1,7 +1,7 @@
 # SBL | Engineering | What does it take to reach the final state?
 
 Type: research
-Status: claimed
+Status: resolved
 Blocked by: —
 
 ## Question

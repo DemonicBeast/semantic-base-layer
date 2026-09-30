@@ -1,7 +1,7 @@
 # SBL | Engineering | Can the first milestone be built with tools that exist?
 
 Type: research
-Status: claimed
+Status: resolved
 Blocked by: —
 
 ## Question

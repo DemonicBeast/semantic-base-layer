@@ -1,7 +1,7 @@
 # SBL | Research | Does this already exist, and where is it used?
 
 Type: research
-Status: claimed
+Status: resolved
 Blocked by: —
 
 ## Question
