@@ -11,3 +11,9 @@ venv/
 # Editors
 .vscode/
 .idea/
+
+# Research scratch: raw web downloads, corpus samples, throwaway scripts.
+# Research agents write here while working. Keep it out of the repo; only the
+# curated NN-findings.md artifacts under SBL-Wayfinder/ are committed.
+research/
+.sbl-*-scratch/
