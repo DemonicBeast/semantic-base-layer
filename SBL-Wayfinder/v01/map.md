@@ -63,6 +63,8 @@ was recovered, what it does to the map, and what was lost is in
 - [SBL \| Engineering \| What does it take to reach the final state?](issues/04-what-does-it-take-to-reach-the-final-state.md): **Compute is cheap, annotation is not.** Phase 1 is a laptop; Phase 5 wants 24 GB VRAM (~$0.69/hr). The dominant cost is native Tamil semantic annotation — 1,000 pairs is a $2.5k–15k estimate at double annotation, and the roadmap runs to 100,000. Detail: [findings](issues/04-findings.md).
 - [SBL \| Research \| Would anyone adopt a shared semantic ID space?](issues/05-would-anyone-adopt-a-shared-semantic-id-space.md): **Unfalsifiable at §20's scale** — with 100 concepts the only emitter is SBL itself. Six minimum conditions stated. Every successful standard paid its adopter at the point of use; the W3C Semantic Web is the closest negative precedent; ONNX won by being narrow. Detail: [findings](issues/05-findings.md).
 
+- [SBL \| Engineering \| Is a front-end semantic interlingua for code already built?](issues/12-findings.md): **Yes — the niche is occupied.** Kythe, SCIP, LSIF and Glean already normalise many source languages into one shared structure for tools to reason over without compiling; `scip-dotnet` is a Roslyn-built C# indexer. A ~100-concept ontology is *lossier* than Roslyn's semantic model, and SCIP's own design doc rejects the nodes-and-edges shape §10/§11 propose. **The design doc's §11 premise is falsified as stated.** The only uncovered gap is behaviour/intent, for which SBL proposes no mechanism. Detail: [findings](issues/12-findings.md).
+
 ## Not yet specified
 
 In scope, toward the destination, but not yet sharp enough to ticket. These

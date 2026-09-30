@@ -344,7 +344,10 @@ owner at the moment it is discovered.
 > live in this file because `AGENT.md` §2 names `plan.md` as *the* active plan; the
 > scope expansion is recorded in the change log below. Nothing in §1–§11 was edited.
 
-- **Status:** awaiting owner approval. No code written against this section yet.
+- **Status:** ⛔ **HALTED 2026-10-01 — hypothesis falsified before any code was written.**
+  D1 returned a negative: the front-end interlingua §11 proposes already exists and is
+  mature (`12-findings.md`). D2 must not be built as designed. Owner has been asked to
+  choose a re-scoped direction; see §12.5.
 - **Scope:** the first *experiment* for the Semantic Base Layer, on a programming
   language domain rather than natural language.
 
@@ -370,7 +373,46 @@ Tamil) precedes §11/Phase 6 (programming languages).
 incapable of returning a negative result; a programming-language experiment is nearly
 free *and* can fail. It is the same ontology machinery either way.
 
-## 12.3 The risk this section exists to resolve
+## 12.3 Outcome — the risk resolved against us
+
+`12-findings.md` (D1) answered the §12.3 question. **The answer is that the niche is
+occupied, and occupied by systems that are better than what §11 proposes.**
+
+| The proposed thing | What already does it | Status |
+| --- | --- | --- |
+| "Different languages map into a shared semantic/program representation" (§18 Phase 6, the Phase 6 question verbatim) | [Kythe](https://kythe.io/docs/kythe-overview.html), [SCIP](https://github.com/sourcegraph/scip/blob/main/README.md), [LSIF](https://github.com/microsoft/language-server-protocol/blob/main/indexFormat/specification.md), [Glean](https://glean.software/docs/introduction/) | **Shipped and mature** |
+| A C# front end built on Roslyn | [`scip-dotnet`](https://github.com/sourcegraph/scip-dotnet) — literally "built with the Roslyn .NET compiler" | **Shipped** |
+| Nodes-and-edges explicit graph (§10 shape) | SCIP's own [DESIGN.md](https://github.com/sourcegraph/scip/blob/main/docs/DESIGN.md) rejects this shape deliberately — "Avoid direct encoding of graphs" — because it hurts parallelism and blows up index-time memory | **Actively argued against, first-party** |
+
+**Three findings that decide the matter:**
+
+1. **The proposed representation is lossier than what exists.** SCIP gets C#/VB from
+   Roslyn's full *semantic* model. A ~100-concept ontology cannot express overload
+   resolution, generics, `async` state machines or LINQ. §11's
+   `DECLARE(VARIABLE=result, VALUE=CALL(...))` carries **less** information than the
+   syntax tree it came from.
+2. **Nobody shipped a single fixed universal vocabulary — and the three who tried, chose
+   otherwise.** Meta, Google and Sourcegraph each landed on *per-language schemas with
+   derived neutrality*. Glean's docs say it directly: "Glean doesn't force all the data
+   into a single schema." That is the **opposite** of SBL's design choice, made by teams
+   with vastly more resources — and it is the same lesson UMR taught on the natural-language
+   side (`02-findings.md`: languages vary, so the schema absorbs the variation).
+3. **The one real gap is one SBL has no mechanism for.** Nothing in the surveyed set
+   captures *behaviour or intent* — "do these two programs compute the same thing?".
+   That gap is genuine (Glean has an extension point for it and ships nothing). But §11
+   as written does not address it; `DECLARE`/`CALL` restates syntax in new words.
+
+**What this costs:** nothing but time. The experiment was designed to be able to fail,
+and it failed on evidence before a line of code was written — which is exactly the
+outcome `D2 §7` was built to produce, and roughly days ahead of where the
+natural-language route would have put us.
+
+**What survives.** The AI-model-facing angle is real but thin: every tool above is
+tool-facing, none targets a model as consumer. An LLM-friendly projection of an existing
+SCIP/Kythe index is a genuine small gap — but it is a **renderer**, not a new semantic
+layer, and should not be sold as one.
+
+## 12.4 The risk this section existed to resolve
 
 Cross-language program translation already has interlinguas: **CIL/MSIL, LLVM IR,
 GraalVM/Truffle, WebAssembly** (back-end), plus **tree-sitter, LSP, SCIP/LSIF, Glean,
@@ -385,7 +427,19 @@ question returns in a new costume.
   answer is in**, because the answer decides whether deliverable D3 below is worth
   building at all.
 
-## 12.4 Deliverables
+## 12.5 Directions, for the owner to choose
+
+Presented as options, not recommendations — this is a scope decision and `AGENT.md` §2
+reserves it for the owner.
+
+| # | Direction | What it means | Cost |
+| --- | --- | --- | --- |
+| **A** | **Contribute on top of SCIP/Kythe** | Stop building formats. Build the model-facing projection layer: take a real SCIP index and render it into something an LLM consumes well. Honest, small, shippable. | Low |
+| **B** | **Re-scope to behaviour/intent** | The one unoccupied gap: equivalence of *what programs compute*, not their shape. Note this **reverses the owner's 2026-10-01 decision** to scope SBL-for-code to structure only — that decision is what the falsification result contradicts. | High — program equivalence is a known hard problem |
+| **C** | **Return to the natural-language layer** | Where UMR is the nearest neighbour but the model-facing angle is likewise unclaimed. Carries the Tamil licensing and annotation-cost problems recorded in `03-findings.md` and `04-findings.md`. | Medium–High |
+| **D** | **Stop the SBL effort** | The evidence supports this as a legitimate reading: two domains surveyed, both niches occupied. | None |
+
+## 12.6 Deliverables
 
 | # | Deliverable | Notes |
 | --- | --- | --- |
@@ -396,7 +450,7 @@ question returns in a new costume.
 Deliberately **not** in this plan: an ontology file, a parser, a graph implementation,
 a model. Those are Build work and they follow a decision, not a plan.
 
-## 12.5 Verification — how this plan will be proven
+## 12.7 Verification — how this plan will be proven
 
 - **V1** — `12-findings.md` exists and answers sub-questions 1–4:
   `test -f SBL-Wayfinder/v01/issues/12-findings.md`
@@ -407,7 +461,7 @@ a model. Those are Build work and they follow a decision, not a plan.
   result can be named, D2 has failed and must be rewritten.
 - **V4** — the owner has explicitly approved D2 before any code is written.
 
-## 12.6 Risks
+## 12.8 Risks
 
 | Risk | Mitigation |
 | --- | --- |
@@ -416,7 +470,7 @@ a model. Those are Build work and they follow a decision, not a plan.
 | Scope creep into building the whole pipeline | §12.4 fixes deliverables at three, all pre-code |
 | Collision with the concurrent graph-index work in §1–§11 | This section appends only; `tools/` and §1–§11 are untouched |
 
-## 12.6b Decisions taken (owner, 2026-10-01)
+## 12.9 Decisions taken (owner, 2026-10-01)
 
 Both were put to the owner as the questions whose answers shape the ontology's depth
 and the corpus's construction. Neither is reversible without cost, so both are recorded
@@ -432,7 +486,7 @@ baseline (tree edit distance over Roslyn and `ast` trees) surfaces the same
 cross-language equivalences as SBL, at comparable cost, the hypothesis is falsified.*
 This must be written into D2 before any measurement is taken.
 
-## 12.7 Change log
+## 12.10 Change log
 
 ### 2026-10-01 — Owner directs SBL to a programming-language-first experiment
 - Planned: `plan.md` §1–§11 covered only the repository graph index; the SBL effort's
@@ -511,11 +565,28 @@ except for the files listed in §14.
 `README.md`, and every `SBL-Wayfinder/v01/` file are untouched; `§12` was appended to
 this plan by another session and was left exactly as written.
 ### 2026-10-01 — Owner fixed the experiment's scope and language pair
-- Planned: §12.3 left "what SBL for code captures" and "which languages" open.
+- Planned: §12.4 left "what SBL for code captures" and "which languages" open.
 - Discovered: both were put to the owner as questions; the owner chose
-  structure-only and C#+Python. Recorded in §12.6b.
+  structure-only and C#+Python. Recorded in §12.7.
 - Changed to: D1's prior-art question is now scoped to *structural* interlinguas
   (AST/syntax-level), not behavioural ones; D2's falsification condition is fixed
   against an AST-difference baseline.
 - Owner notified: yes — the questions were answered by the owner directly.
 - Affects: §12.4 D2, §12.5 V3, and the scope of the in-flight `12-findings.md`.
+### 2026-10-01 — D1 falsified the §11 premise; plan halted before execution
+- Planned: §12.4 D2 (the AST-baseline experiment) to be built once the owner approved.
+  The owner had approved the scope (structure-only, C#+Python) and this section was
+  awaiting a build go-ahead.
+- Discovered: D1 (`12-findings.md`, primary-source verified) showed the front-end
+  interlingua is **already shipped** — Kythe, SCIP, LSIF and Glean — including
+  `scip-dotnet`, a Roslyn-built C# indexer. Further, SCIP's own design doc *rejects* the
+  nodes-and-edges representation §10/§11 propose, and a 100-concept ontology is lossier
+  than Roslyn's semantic model. (evidence: `12-findings.md` §1–§3)
+- Changed to: §12 status set to HALTED; §12.3a records the outcome; §12.8 presents four
+  directions for the owner to choose between. **No code was written against §12.** D2 is
+  not deleted — it remains a correct design for testing *any* proposed representation
+  against an AST baseline, and applies unchanged to a re-scoped direction.
+- Owner notified: yes — reported in this session with the evidence, and the direction
+  choice was put to the owner.
+- Affects: §12.3 (risk resolved against us), §12.3a (new), §12.8 (new), D2's status, and
+  the owner's structure-only decision, which direction B would reverse.
