@@ -17,3 +17,8 @@ venv/
 # curated NN-findings.md artifacts under SBL-Wayfinder/ are committed.
 research/
 .sbl-*-scratch/
+
+# Generated repository graph index (regenerable from tools/sblgraph.py)
+tools/sblgraph.sqlite
+tools/sblgraph.sqlite.tmp
+*.sqlite.tmp

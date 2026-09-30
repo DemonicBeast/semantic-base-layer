@@ -44,6 +44,9 @@ TEXT_SUFFIX = (
 RE_FENCE = re.compile(r"^\s*(```|~~~)")
 RE_HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
 RE_MD_LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+RE_URL_LIKE = re.compile(
+    r"^(?:[a-z][a-z0-9+.\-]*:)?//|^[a-z0-9][a-z0-9.\-]*\.(?:org|com|net|io|ai|edu|gov|dev)(?:[/?#]|$)",
+    re.I)
 RE_TICKET_REF = re.compile(r"\b(\d{2})-findings\.md\b")
 RE_ISSUES_LINK = re.compile(r"(?:^|/)issues/(\d{2})-[a-z0-9-]+\.md")
 RE_FIELD = re.compile(r"^(Type|Status|Blocked by|Resolved|Artifact|Label):\s*(.*?)\s*$")
@@ -521,7 +524,7 @@ def cmd_health(conn):
     n = 0
     for r in conn.execute(
             "SELECT e.relation, e.src_id, e.attrs_json, n.name FROM edges e "
-            "JOIN nodes n ON n.id = e.dst_id "
+            "JOIN nodes n ON n.uid = e.dst_id "
             "WHERE e.relation IN ('missing_ref','missing_artifact') ORDER BY e.relation"):
         label = "BROKEN LINK " if r["relation"] == "missing_ref" else "NO ARTIFACT "
         print("  %s %s -> %s" % (label, r["src_id"], r["name"]))
@@ -536,7 +539,7 @@ def cmd_health(conn):
             "SELECT t.ticket_id, t.status, t.file_path, t.title FROM tickets t "
             "WHERE t.ticket_id NOT IN ("
             "  SELECT substr(e.src_id, 8) FROM edges e WHERE e.relation='contains' "
-            "  AND e.dst_id IN (SELECT id FROM nodes WHERE kind='file' AND repo_path LIKE '%/map.md'))"):
+            "  AND e.dst_id IN (SELECT uid FROM nodes WHERE kind='file' AND repo_path LIKE '%/map.md'))"):
         print("  ORPHAN   ticket %s (%s) - %s" % (r["ticket_id"], r["status"], r["file_path"]))
         print("           %s" % r["title"])
         n += 1
@@ -567,10 +570,10 @@ def cmd_query(conn, text, limit):
         return 1
     expr = " OR ".join('"%s"' % w for w in words)
     sql = """
-      SELECT n.id, n.kind, n.repo_path, n.name, n.line_start, n.line_end,
+      SELECT n.uid, n.kind, n.repo_path, n.name, n.line_start, n.line_end,
              snippet(nodes_fts, 1, '', '', ' ... ', 12) AS snip,
              bm25(nodes_fts) AS score
-      FROM nodes_fts JOIN nodes n ON n.id = nodes_fts.rowid
+      FROM nodes_fts JOIN nodes n ON n.rowid = nodes_fts.rowid
       WHERE nodes_fts MATCH ?
       ORDER BY score LIMIT ?"""
     rows = conn.execute(sql, (expr, limit)).fetchall()
@@ -588,7 +591,7 @@ def cmd_query(conn, text, limit):
 
 def cmd_node(conn, key):
     rows = conn.execute(
-        "SELECT * FROM nodes WHERE repo_path = ? OR id = ? OR name LIKE ? "
+        "SELECT * FROM nodes WHERE repo_path = ? OR uid = ? OR name LIKE ? "
         "OR repo_path LIKE ? ORDER BY kind LIMIT 20", (key, key, "%" + key + "%", "%" + key + "%")
     ).fetchall()
     if not rows:
